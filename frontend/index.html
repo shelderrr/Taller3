@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema E-Commerce</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 p-8 font-sans">
+  
+  <!-- Sección de Login -->
+  <div id="login-section" class="max-w-sm mx-auto bg-white p-8 rounded-lg shadow-md mt-10">
+    <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Iniciar Sesión</h2>
+    <form id="login-form">
+      <input type="email" id="email" placeholder="Correo electrónico" class="w-full mb-4 p-3 border rounded" required>
+      <input type="password" id="password" placeholder="Contraseña" class="w-full mb-6 p-3 border rounded" required>
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded">Entrar</button>
+    </form>
+    
+    <!-- Botón para ir al registro -->
+    <div class="mt-4 text-center border-t pt-4">
+      <p class="text-sm text-gray-600 mb-2">¿No tienes cuenta?</p>
+      <button id="show-register-btn" class="text-blue-600 hover:underline font-semibold">Solicitar Registro</button>
+    </div>
+    <p id="login-error" class="text-red-500 text-sm mt-4 text-center hidden"></p>
+  </div>
+
+  <!-- Formulario de Registro Público (Oculto) -->
+  <div id="public-register-section" class="max-w-sm mx-auto bg-white p-8 rounded-lg shadow-md mt-10 hidden">
+    <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Solicitar Acceso</h2>
+    <form id="public-register-form">
+      <input type="text" id="reg-name" placeholder="Nombre completo" class="w-full mb-4 p-3 border rounded" required>
+      <input type="email" id="reg-email" placeholder="Correo electrónico" class="w-full mb-4 p-3 border rounded" required>
+      <input type="password" id="reg-password" placeholder="Contraseña" class="w-full mb-6 p-3 border rounded" required>
+      <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded">Enviar Solicitud</button>
+    </form>
+    <button id="back-to-login-btn" class="w-full mt-4 text-gray-500 hover:text-gray-800">Volver</button>
+  </div>
+
+  <!-- Sala de Espera (Oculto) -->
+  <div id="waiting-section" class="max-w-md mx-auto bg-orange-50 p-8 rounded-lg shadow-md mt-10 border border-orange-200 hidden text-center">
+    <h2 class="text-2xl font-bold mb-4 text-orange-600">Cuenta en Revisión</h2>
+    <p class="text-gray-700 mb-6">Tu solicitud de registro está siendo evaluada por un administrador. Aún no tienes un rol asignado. Por favor, intenta iniciar sesión más tarde.</p>
+    <button id="waiting-ok-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded">Entendido</button>
+  </div>
+
+<!-- Panel de Administración (Oculto) -->
+  <div id="admin-section" class="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow-md hidden mt-10">
+    <div class="flex justify-between items-center mb-8 border-b pb-4">
+      <h2 class="text-3xl font-bold text-gray-800">Panel de Administrador</h2>
+      <button class="logout-btn bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded font-semibold">Cerrar Sesión</button>
+    </div>
+    
+    <!-- Lista de usuarios -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-800 text-white">
+            <th class="p-3 rounded-tl">Nombre</th>
+            <th class="p-3">Correo</th>
+            <th class="p-3">Rol</th>
+            <th class="p-3">Estado</th>
+            <th class="p-3 rounded-tr text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="users-table-body" class="divide-y divide-gray-200">
+          <!-- Los usuarios se inyectarán aquí -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN NUEVA: Lista de productos para el Admin -->
+    <h3 class="text-2xl font-bold mt-10 mb-4 text-gray-800 border-t pt-6">Aprobación de Productos</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-indigo-800 text-white">
+            <th class="p-3 rounded-tl">Imagen</th>
+            <th class="p-3">Producto (Precio/Stock)</th>
+            <th class="p-3">Vendedor</th>
+            <th class="p-3">Estado</th>
+            <th class="p-3 rounded-tr text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="admin-products-table-body" class="divide-y divide-gray-200">
+          <!-- Los productos para el admin se inyectarán aquí -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+
+ <!-- Panel de Vendedor (Producto) -->
+  <div id="vendedor-section" class="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow-md hidden mt-10">
+    <div class="flex justify-between items-center mb-8 border-b pb-4">
+      <h2 class="text-3xl font-bold text-blue-800">Panel de Vendedor (Productos)</h2>
+      <button class="logout-btn bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded font-semibold">Cerrar Sesión</button>
+    </div>
+    
+    <!-- Formulario de Producto con Imagen -->
+    <div class="bg-blue-50 p-6 rounded border mb-8">
+      <h3 class="text-xl font-semibold mb-4 text-blue-900">Agregar Nuevo Producto</h3>
+      <form id="product-form" class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <input type="text" id="prod-name" placeholder="Nombre del artículo" class="p-3 border rounded focus:ring-2 focus:ring-blue-500" required>
+          <input type="number" id="prod-price" placeholder="Precio ($)" step="0.01" class="p-3 border rounded focus:ring-2 focus:ring-blue-500" required>
+          <input type="number" id="prod-stock" placeholder="Stock disponible" class="p-3 border rounded focus:ring-2 focus:ring-blue-500" required>
+          <!-- Input especial para subir archivos -->
+          <input type="file" id="prod-image" accept="image/*" class="p-3 border rounded bg-white focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded font-bold transition-colors w-full md:w-auto self-end">Guardar Producto</button>
+      </form>
+    </div>
+
+    <!-- Catálogo de Productos -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-blue-800 text-white">
+            <th class="p-3 rounded-tl">Imagen</th>
+            <th class="p-3">Nombre</th>
+            <th class="p-3">Precio</th>
+            <th class="p-3">Stock</th>
+            <th class="p-3">Estado</th>
+            <th class="p-3 rounded-tr text-center">Acciones</th>
+          </tr>
+        </thead>        <tbody id="products-table-body" class="divide-y divide-gray-200">
+          <!-- Los productos se inyectarán aquí -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<!-- Panel de Distribuidor (Pedido) -->
+  <div id="distribuidor-section" class="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow-md hidden mt-10">
+    <div class="flex justify-between items-center mb-8 border-b pb-4">
+      <h2 class="text-3xl font-bold text-green-800">Panel de Distribuidor (Pedidos)</h2>
+      <button class="logout-btn bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded font-semibold">Cerrar Sesión</button>
+    </div>
+
+    <!-- Generar Pedido (Carrito) -->
+    <div class="bg-green-50 p-6 rounded border mb-8">
+      <h3 class="text-xl font-semibold mb-4 text-green-900">Armar Nuevo Pedido</h3>
+      <div class="flex flex-col md:flex-row gap-4 mb-4">
+        <select id="dist-product-select" class="p-3 border rounded flex-1 focus:ring-2 focus:ring-green-500">
+          <option value="">Selecciona un producto aprobado...</option>
+        </select>
+        <input type="number" id="dist-quantity" placeholder="Cantidad" min="1" value="1" class="p-3 border rounded w-32 focus:ring-2 focus:ring-green-500">
+        <button onclick="addToCart()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded font-bold transition-colors">Agregar</button>
+      </div>
+
+      <div class="bg-white p-4 rounded border shadow-inner">
+        <h4 class="font-bold mb-2 text-gray-700">Productos en el pedido actual:</h4>
+        <ul id="cart-list" class="mb-4 divide-y text-sm text-gray-600"></ul>
+        <div class="flex justify-between items-center font-bold text-lg border-t pt-3 text-green-800">
+          <span>Total:</span>
+          <span id="cart-total">$0.00</span>
+        </div>
+        <button onclick="submitOrder()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded font-bold transition-colors">Confirmar Pedido</button>
+      </div>
+    </div>
+
+    <!-- Historial de Pedidos -->
+    <h3 class="text-2xl font-bold mt-10 mb-4 text-gray-800 border-t pt-6">Historial de Transacciones</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-green-800 text-white">
+            <th class="p-3 rounded-tl">Folio (ID)</th>
+            <th class="p-3">Distribuidor</th>
+            <th class="p-3">Total</th>
+            <th class="p-3">Fecha</th>
+            <th class="p-3 rounded-tr">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="orders-table-body" class="divide-y divide-gray-200">
+          <!-- Los pedidos se inyectarán aquí -->
+        </tbody>
+      </table>
+    </div>
+  </div>
