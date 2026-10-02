@@ -43,6 +43,14 @@ class MysqlProductRepository {
     );
     return result.affectedRows > 0;
   }
+
+async findByVendorId(vendedorId) {
+
+  // Asegúrate de usar el nombre correcto de tu conexión (ej. this.pool, pool, db)
+	const [rows] = await pool.query('SELECT * FROM products WHERE vendedor_id = ?', [vendedorId]); 
+// (Asegúrate de que coincida con el nombre que recibe tu función arriba)
+  return rows;
+}
 }
 
 module.exports = MysqlProductRepository;

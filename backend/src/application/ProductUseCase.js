@@ -1,31 +1,29 @@
-const Product = require('../domain/Product');
-
 class ProductUseCase {
   constructor(productRepository) {
     this.productRepository = productRepository;
   }
 
-  async getAllProducts() {
+  // MÉTODO CORREGIDO: Filtra por el id del vendedor
+  async getProducts(user) {
+    // Si el usuario existe y es un vendedor, trae solo sus productos
+    if (user && user.role === 'vendedor') {
+      return await this.productRepository.findByVendorId(user.id);
+    }
+    
+    // Si es administrador, distribuidor o no hay sesión, trae todo el catálogo
     return await this.productRepository.findAll();
   }
 
-  async createProduct(name, price, stock, imageUrl) {
-    const newProduct = new Product(null, name, price, stock, imageUrl);
-    return await this.productRepository.save(newProduct);
+  async createProduct(data) {
+    return await this.productRepository.save(data);
   }
 
-  async updateProduct(id, name, price, stock, imageUrl) {
-    return await this.productRepository.update(id, name, price, stock, imageUrl);
+  async updateStatus(id, status) {
+    return await this.productRepository.updateStatus(id, status);
   }
 
   async deleteProduct(id) {
-    return await this.productRepository.deleteById(id);
-  }
-  async updateProductStatus(id, status) {
-    if (status !== 'aprobado' && status !== 'rechazado') {
-      throw new Error('Estado inválido. Debe ser aprobado o rechazado.');
-    }
-    return await this.productRepository.updateStatus(id, status);
+    return await this.productRepository.delete(id);
   }
 }
 

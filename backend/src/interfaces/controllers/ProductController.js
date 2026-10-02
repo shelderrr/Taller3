@@ -1,50 +1,61 @@
 class ProductController {
   constructor(productUseCase) {
     this.productUseCase = productUseCase;
+    
+    // Bindeamos los métodos para no perder el contexto de 'this' en el router
+    this.getProducts = this.getProducts.bind(this);
+    this.createProduct = this.createProduct.bind(this);
+    this.updateStatus = this.updateStatus.bind(this);
+    this.deleteProduct = this.deleteProduct.bind(this);
   }
 
-  async getAll(req, res) {
+  // MÉTODO CORREGIDO: Extrae el usuario y se lo pasa al Caso de Uso
+  async getProducts(req, res) {
     try {
-      const products = await this.productUseCase.getAllProducts();
-      res.json(products);
+      const user = req.user; // Esto viene de tu authMiddleware
+      const products = await this.productUseCase.getProducts(user);
+      res.status(200).json(products);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
 
-  async create(req, res) {
+  // MÉTODO PARA CREAR
+  async createProduct(req, res) {
     try {
-      // Los datos de texto vienen en req.body
-      const { name, price, stock } = req.body;
+      const productData = { ...req.body };
+      if (req.file) {
+        productData.imageUrl = `/uploads/${req.file.filename}`;
+      }
+      productData.vendedorId = req.user.id;
       
-      // Si multer procesó una imagen, guardamos la ruta estática
-      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-      
-      const id = await this.productUseCase.createProduct(name, price, stock, imageUrl);
-      res.status(201).json({ message: 'Producto registrado exitosamente', id, imageUrl });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async delete(req, res) {
-    try {
-      const { id } = req.params;
-      await this.productUseCase.deleteProduct(id);
-      res.json({ message: 'Producto eliminado correctamente' });
+      const product = await this.productUseCase.createProduct(productData);
+      res.status(201).json(product);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
 
-async updateStatus(req, res) {
+  // MÉTODO PARA ACTUALIZAR ESTADO (Admin)
+  async updateStatus(req, res) {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      await this.productUseCase.updateProductStatus(id, status);
-      res.json({ message: `Producto marcado como ${status} correctamente` });
+      const updated = await this.productUseCase.updateStatus(id, status);
+      res.status(200).json(updated);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // MÉTODO PARA ELIMINAR
+  async deleteProduct(req, res) {
+    try {
+      const { id } = req.params;
+      await this.productUseCase.deleteProduct(id);
+      res.status(200).json({ message: 'Producto eliminado' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   }
 }

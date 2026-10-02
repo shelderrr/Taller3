@@ -1,5 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const app = express(); // PRIMERO SE CREA 'app'
+app.use(cors());
+// Agrega esta línea para hacer públicas las imágenes
+app.use('/uploads', express.static('uploads'));
 const path = require('path');
 require('dotenv').config({ path: '../.env' }); 
 
@@ -15,7 +19,6 @@ const ProductUseCase = require('./application/ProductUseCase');
 const ProductController = require('./interfaces/controllers/ProductController');
 const productRoutes = require('./interfaces/routes/productRoutes');
 
-const app = express();
 app.use(cors());
 app.use(express.json());
 
