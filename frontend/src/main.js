@@ -450,6 +450,9 @@ window.loadProducts = async () => {
 
 document.getElementById('product-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const form = e.currentTarget;
+  const message = document.getElementById('product-message');
+  const submitButton = document.getElementById('product-submit-button');
   const formData = new FormData();
   formData.append('name', document.getElementById('prod-name').value);
   formData.append('price', document.getElementById('prod-price').value);
@@ -458,23 +461,31 @@ document.getElementById('product-form')?.addEventListener('submit', async (e) =>
   const imageFile = document.getElementById('prod-image').files[0];
   if (imageFile) formData.append('image', imageFile);
 
+  submitButton.disabled = true;
+  submitButton.textContent = 'Publicando...';
+  message.classList.add('hidden');
+
   try {
     const res = await fetch(`${API_URL}/products`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${authToken}` }, 
       body: formData
     });
-    
-    if (res.ok) {
-      alert("¡Producto subido con éxito! Está pendiente de aprobación.");
-      document.getElementById('product-form').reset();
-      loadProducts(); 
-    } else {
-      const errorData = await res.json();
-      alert("Error: " + (errorData.error || "No se pudo crear el producto"));
-    }
+
+    const responseData = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(responseData.error || `No se pudo publicar el producto (${res.status}).`);
+
+    form.reset();
+    message.textContent = 'Producto publicado y enviado a revisión del administrador.';
+    message.className = 'text-sm text-green-700';
+    await loadProducts();
   } catch (error) {
     console.error('Error al subir producto:', error);
+    message.textContent = error.message || 'No se pudo conectar con el servidor. Revisa que el backend esté activo.';
+    message.className = 'text-sm text-red-600';
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Publicar';
   }
 });
 

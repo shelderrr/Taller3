@@ -282,7 +282,8 @@
             <input type="number" id="prod-stock" placeholder="Stock" required class="w-1/2 p-3 bg-gray-50 border border-gray-200 outline-none focus:border-orange-500">
           </div>
           <input type="file" id="prod-image" accept="image/*" class="w-full text-sm">
-          <button type="submit" class="w-full bg-black text-orange-500 hover:bg-orange-500 hover:text-black font-black py-3 uppercase transition-colors">Publicar</button>
+            <p id="product-message" class="hidden text-sm" aria-live="polite"></p>
+            <button id="product-submit-button" type="submit" class="w-full bg-black text-orange-500 hover:bg-orange-500 hover:text-black font-black py-3 uppercase transition-colors disabled:cursor-wait disabled:opacity-60">Publicar</button>
         </form>
       </div>
       <!-- Columna Derecha: Catálogo -->

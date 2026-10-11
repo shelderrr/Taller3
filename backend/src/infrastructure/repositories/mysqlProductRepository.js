@@ -58,11 +58,16 @@ class MysqlProductRepository {
   }
 
 async findByVendorId(vendedorId) {
-
-  // Asegúrate de usar el nombre correcto de tu conexión (ej. this.pool, pool, db)
-	const [rows] = await pool.query('SELECT * FROM products WHERE vendedor_id = ?', [vendedorId]); 
-// (Asegúrate de que coincida con el nombre que recibe tu función arriba)
-  return rows;
+    const [rows] = await pool.query(`
+      SELECT p.*, u.name AS vendedor_name
+      FROM products p
+      LEFT JOIN users u ON p.vendedor_id = u.id
+      WHERE p.vendedor_id = ?
+      ORDER BY p.id DESC
+    `, [vendedorId]);
+    return rows.map(row => new Product(
+      row.id, row.name, row.price, row.stock, row.image_url, row.vendedor_id, row.vendedor_name, row.status
+    ));
 }
 }
 
