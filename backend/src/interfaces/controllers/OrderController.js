@@ -8,10 +8,21 @@ class OrderController {
       const userId = req.user.id; 
       const { items } = req.body; 
       
-      const orderId = await this.orderUseCase.createOrder(userId, items);
-      res.status(201).json({ message: 'Pedido registrado exitosamente', orderId });
+      const receipt = await this.orderUseCase.createOrder(userId, items, req.user.role === 'user');
+      const message = receipt.emailSent === false
+        ? 'El pedido se registró, pero no se pudo enviar el correo.'
+        : receipt.emailSent
+          ? 'Pedido registrado y recibo enviado al correo de tu cuenta.'
+          : 'Pedido registrado exitosamente';
+      res.status(201).json({
+        message,
+        orderId: receipt.orderId,
+        totalPrice: receipt.totalPrice,
+        emailSent: receipt.emailSent,
+        previewUrl: receipt.previewUrl || null
+      });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(error.statusCode || 400).json({ error: error.message });
     }
   }
 
@@ -19,6 +30,15 @@ class OrderController {
     try {
       const orders = await this.orderUseCase.getAllOrders();
       res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async getSoldProducts(req, res) {
+    try {
+      const products = await this.orderUseCase.getSoldProducts();
+      res.json(products);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

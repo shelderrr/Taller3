@@ -41,14 +41,24 @@ const MysqlOrderRepository = require('./infrastructure/repositories/mysqlOrderRe
 const OrderUseCase = require('./application/OrderUseCase');
 const OrderController = require('./interfaces/controllers/OrderController');
 const orderRoutes = require('./interfaces/routes/orderRoutes');
+const OrderEmailService = require('./infrastructure/email/OrderEmailService');
+const MysqlAnalyticsRepository = require('./infrastructure/repositories/mysqlAnalyticsRepository');
+const AnalyticsService = require('./application/AnalyticsService');
+const AnalyticsController = require('./interfaces/controllers/AnalyticsController');
+const analyticsRoutes = require('./interfaces/routes/analyticsRoutes');
 
 // ... más abajo, debajo de la inyección de Productos ...
 const orderRepository = new MysqlOrderRepository();
-const orderUseCase = new OrderUseCase(orderRepository);
+const orderEmailService = new OrderEmailService();
+const orderUseCase = new OrderUseCase(orderRepository, orderEmailService);
 const orderController = new OrderController(orderUseCase);
+const analyticsRepository = new MysqlAnalyticsRepository();
+const analyticsService = new AnalyticsService(analyticsRepository);
+const analyticsController = new AnalyticsController(analyticsService);
 
 // ... en la sección de rutas ...
 app.use('/api', orderRoutes(orderController));
+app.use('/api', analyticsRoutes(analyticsController));
 // 6. CARGAR TODAS LAS RUTAS
 app.use('/api', userRoutes(userController));
 app.use('/api', productRoutes(productController));

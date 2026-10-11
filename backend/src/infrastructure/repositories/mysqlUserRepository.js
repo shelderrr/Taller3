@@ -17,7 +17,7 @@ class MysqlUserRepository {
   async save(user) {
     const [result] = await pool.query(
       'INSERT INTO users (name, email, password, role, status) VALUES (?, ?, ?, ?, ?)',
-      [user.name, user.email, user.password, 'user', 'pendiente']
+      [user.name, user.email, user.password, user.role, user.status]
     );
     return result.insertId;
   }

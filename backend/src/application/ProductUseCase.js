@@ -9,6 +9,10 @@ class ProductUseCase {
     if (user && user.role === 'vendedor') {
       return await this.productRepository.findByVendorId(user.id);
     }
+
+    if (user && user.role === 'user') {
+      return await this.productRepository.findApproved();
+    }
     
     // Si es administrador, distribuidor o no hay sesión, trae todo el catálogo
     return await this.productRepository.findAll();

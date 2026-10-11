@@ -45,4 +45,14 @@ const verifyToken = (req, res, next) => {
     res.status(401).json({ error: 'Token inválido' });
   }
 };
-module.exports = { verifyToken, verifyAdmin, verifyVendedor, verifyDistribuidor };
+
+const verifyOrderCreator = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (!['user', 'distribuidor', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Este rol no puede crear pedidos' });
+    }
+    next();
+  });
+};
+
+module.exports = { verifyToken, verifyAdmin, verifyVendedor, verifyDistribuidor, verifyOrderCreator };

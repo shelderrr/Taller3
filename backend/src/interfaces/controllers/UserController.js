@@ -15,10 +15,13 @@ class UserController {
 
   async register(req, res) {
     try {
-      const { name, email, password } = req.body;
-      // Nota: Quitamos 'role' de aquí porque ahora se asigna en el UseCase
-      const id = await this.userUseCase.register(name, email, password);
-      res.status(201).json({ message: 'Usuario registrado exitosamente (Pendiente de aprobación)', id });
+      const { name, email, password, isCollaborator } = req.body;
+      const collaboratorRequest = isCollaborator === true;
+      const id = await this.userUseCase.register(name, email, password, collaboratorRequest);
+      const message = collaboratorRequest
+        ? 'Solicitud de colaborador enviada. Espera la aprobación de un administrador.'
+        : 'Cuenta de usuario creada. Ya puedes iniciar sesión.';
+      res.status(201).json({ message, id });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

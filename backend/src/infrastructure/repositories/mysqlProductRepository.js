@@ -13,6 +13,19 @@ class MysqlProductRepository {
     ));
   }
 
+  async findApproved() {
+    const [rows] = await pool.query(`
+      SELECT p.*, u.name as vendedor_name
+      FROM products p
+      LEFT JOIN users u ON p.vendedor_id = u.id
+      WHERE p.status = 'aprobado' AND p.stock > 0
+      ORDER BY p.name ASC
+    `);
+    return rows.map(row => new Product(
+      row.id, row.name, row.price, row.stock, row.image_url, row.vendedor_id, row.vendedor_name, row.status
+    ));
+  }
+
   async save(product) {
     // Al registrar, forzamos el status a 'pendiente'
     const [result] = await pool.query(

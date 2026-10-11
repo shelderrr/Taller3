@@ -1,3 +1,5 @@
+import Chart from 'chart.js/auto';
+
 const API_URL = 'http://localhost:3000/api';
 let authToken = localStorage.getItem('token');
 let currentUser = JSON.parse(localStorage.getItem('user'));
@@ -8,7 +10,7 @@ let currentUser = JSON.parse(localStorage.getItem('user'));
 function showSection(sectionId) {
   const sections = [
     'login-section', 'public-register-section', 'waiting-section',
-    'admin-section', 'vendedor-section', 'distribuidor-section'
+    'admin-section', 'vendedor-section', 'distribuidor-section', 'user-section'
   ];
   
   sections.forEach(id => {
@@ -45,6 +47,7 @@ function routeUser(role, status) {
       showSection('admin-section');
       cargarProductosAdmin(); 
       cargarUsuariosAdmin();
+      loadAdminAnalytics();
       break;
     case 'vendedor':
       showSection('vendedor-section');
@@ -54,6 +57,12 @@ function routeUser(role, status) {
       showSection('distribuidor-section');
       loadOrders();
       loadDistribuidorProducts(); 
+      break;
+    case 'user':
+      showSection('user-section');
+      document.getElementById('user-checkout-email').value = currentUser.email;
+      loadUserProducts();
+      renderUserCart();
       break;
     default:
       showSection('login-section');
@@ -87,7 +96,9 @@ document.getElementById('login-form')?.addEventListener('submit', async (e) => {
     }
 
     if (!res.ok) {
-      errorMsg.textContent = data.error || data.message || 'Correo o contraseña incorrectos.';
+      errorMsg.textContent = data.error === 'CUENTA_PENDIENTE'
+        ? 'Tu solicitud de colaborador sigue pendiente de aprobación.'
+        : data.error || data.message || 'Correo o contraseña incorrectos.';
       errorMsg.classList.remove('hidden');
       return;
     }
@@ -121,12 +132,13 @@ document.getElementById('public-register-form')?.addEventListener('submit', asyn
   const name = document.getElementById('reg-name').value;
   const email = document.getElementById('reg-email').value;
   const password = document.getElementById('reg-password').value;
+  const isCollaborator = document.getElementById('reg-collaborator').checked;
 
   try {
     const res = await fetch(`${API_URL}/users`, { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role: 'vendedor' })
+      body: JSON.stringify({ name, email, password, isCollaborator })
     });
     
     let data;
@@ -137,7 +149,9 @@ document.getElementById('public-register-form')?.addEventListener('submit', asyn
     }
 
     if (res.ok) {
-      alert('Solicitud enviada. Un administrador revisará tu cuenta.');
+      alert(data.message || (isCollaborator
+        ? 'Solicitud enviada. Espera la aprobación de un administrador.'
+        : 'Cuenta creada. Ya puedes iniciar sesión.'));
       showSection('login-section');
       document.getElementById('public-register-form').reset();
     } else {
@@ -146,6 +160,247 @@ document.getElementById('public-register-form')?.addEventListener('submit', asyn
   } catch (error) {
     console.error('Error en registro:', error);
     alert('Error de conexión.');
+  }
+});
+
+let marketProducts = [];
+let userCart = [];
+
+function formatMoney(amount) {
+  return `$${Number(amount).toFixed(2)}`;
+}
+
+function createTextElement(tag, className, text) {
+  const element = document.createElement(tag);
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+async function loadUserProducts() {
+  const grid = document.getElementById('user-products-grid');
+  const message = document.getElementById('user-products-message');
+  grid.replaceChildren();
+  message.textContent = 'Cargando productos disponibles...';
+  message.classList.remove('hidden');
+
+  try {
+    const response = await fetch(`${API_URL}/products`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const products = await response.json();
+    if (!response.ok) throw new Error(products.error || 'No se pudo cargar el catálogo.');
+
+    marketProducts = products.filter(product => product.status === 'aprobado' && Number(product.stock) > 0);
+    if (marketProducts.length === 0) {
+      message.textContent = 'No hay productos disponibles por ahora.';
+      return;
+    }
+
+    message.classList.add('hidden');
+    marketProducts.forEach(product => grid.appendChild(createMarketTile(product)));
+  } catch (error) {
+    message.textContent = error.message || 'Error de conexión al cargar el catálogo.';
+  }
+}
+
+function createMarketTile(product) {
+  const tile = document.createElement('article');
+  tile.className = 'overflow-hidden border border-gray-200 bg-white';
+
+  const imageFrame = document.createElement('div');
+  imageFrame.className = 'relative aspect-[4/3] bg-gray-100';
+  const placeholder = createTextElement('span', 'absolute inset-0 grid place-items-center text-sm text-gray-400', 'Sin imagen');
+  imageFrame.appendChild(placeholder);
+  if (product.imageUrl) {
+    const image = document.createElement('img');
+    image.src = product.imageUrl.startsWith('http') ? product.imageUrl : `http://localhost:3000${product.imageUrl}`;
+    image.alt = product.name;
+    image.loading = 'lazy';
+    image.className = 'relative h-full w-full object-cover';
+    image.addEventListener('error', () => image.remove(), { once: true });
+    imageFrame.appendChild(image);
+  }
+
+  const content = document.createElement('div');
+  content.className = 'p-4';
+  content.appendChild(createTextElement('p', 'text-xs uppercase text-gray-500', `Vendido por ${product.vendedorName || 'Vendedor'}`));
+  content.appendChild(createTextElement('h3', 'mt-1 min-h-12 text-base font-bold text-gray-900', product.name));
+  content.appendChild(createTextElement('p', 'mt-2 text-xl font-black text-gray-900', formatMoney(product.price)));
+  content.appendChild(createTextElement('p', 'mt-1 text-sm text-gray-600', `${product.stock} unidades disponibles`));
+
+  const controls = document.createElement('div');
+  controls.className = 'mt-4 flex items-end gap-2';
+  const quantityLabel = document.createElement('label');
+  quantityLabel.className = 'flex-1 text-xs font-bold uppercase text-gray-500';
+  quantityLabel.textContent = 'Cantidad';
+  const quantityInput = document.createElement('input');
+  quantityInput.type = 'number';
+  quantityInput.min = '1';
+  quantityInput.max = String(product.stock);
+  quantityInput.step = '1';
+  quantityInput.value = '1';
+  quantityInput.className = 'mt-1 block w-full border border-gray-300 px-3 py-2 text-sm text-gray-900';
+  quantityInput.setAttribute('aria-label', `Cantidad de ${product.name}`);
+  quantityLabel.appendChild(quantityInput);
+
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.className = 'bg-black px-3 py-2 text-sm font-bold uppercase text-orange-500 hover:bg-orange-500 hover:text-black';
+  addButton.textContent = 'Agregar';
+  addButton.addEventListener('click', () => addUserCartItem(product, Number(quantityInput.value)));
+  controls.append(quantityLabel, addButton);
+  content.appendChild(controls);
+  tile.append(imageFrame, content);
+  return tile;
+}
+
+function addUserCartItem(product, quantity) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1) {
+    alert('Ingresa una cantidad válida.');
+    return;
+  }
+
+  const existingItem = userCart.find(item => item.productId === product.id);
+  const nextQuantity = (existingItem?.quantity || 0) + quantity;
+  if (nextQuantity > Number(product.stock)) {
+    alert(`Solo hay ${product.stock} unidades disponibles.`);
+    return;
+  }
+
+  if (existingItem) {
+    existingItem.quantity = nextQuantity;
+  } else {
+    userCart.push({
+      productId: product.id,
+      name: product.name,
+      price: Number(product.price),
+      stock: Number(product.stock),
+      vendedorName: product.vendedorName || 'Vendedor',
+      quantity
+    });
+  }
+  renderUserCart();
+}
+
+function createUserCartLine(item, showControls) {
+  const row = document.createElement('li');
+  row.className = 'flex justify-between gap-3 py-3';
+  const description = document.createElement('div');
+  description.className = 'min-w-0';
+  description.appendChild(createTextElement('p', 'font-bold text-gray-900', item.name));
+  description.appendChild(createTextElement('p', 'text-xs text-gray-500', `Vendedor: ${item.vendedorName}`));
+  description.appendChild(createTextElement('p', 'mt-1 text-sm text-gray-700', `${item.quantity} x ${formatMoney(item.price)}`));
+
+  const actions = document.createElement('div');
+  actions.className = 'flex shrink-0 flex-col items-end justify-between gap-2';
+  actions.appendChild(createTextElement('span', 'font-bold text-gray-900', formatMoney(item.price * item.quantity)));
+  if (showControls) {
+    const controls = document.createElement('div');
+    controls.className = 'flex items-center gap-1';
+    const decrease = document.createElement('button');
+    decrease.type = 'button';
+    decrease.className = 'h-8 w-8 border border-gray-300 font-bold';
+    decrease.textContent = '-';
+    decrease.setAttribute('aria-label', `Quitar una unidad de ${item.name}`);
+    decrease.addEventListener('click', () => changeUserCartQuantity(item.productId, -1));
+    const increase = document.createElement('button');
+    increase.type = 'button';
+    increase.className = 'h-8 w-8 border border-gray-300 font-bold';
+    increase.textContent = '+';
+    increase.setAttribute('aria-label', `Agregar una unidad de ${item.name}`);
+    increase.disabled = item.quantity >= item.stock;
+    increase.addEventListener('click', () => changeUserCartQuantity(item.productId, 1));
+    controls.append(decrease, increase);
+    actions.appendChild(controls);
+  }
+  row.append(description, actions);
+  return row;
+}
+
+function changeUserCartQuantity(productId, amount) {
+  const item = userCart.find(cartItem => cartItem.productId === productId);
+  if (!item) return;
+  item.quantity += amount;
+  if (item.quantity <= 0) userCart = userCart.filter(cartItem => cartItem.productId !== productId);
+  renderUserCart();
+}
+
+function renderUserCart() {
+  const preview = document.getElementById('user-cart-preview');
+  const details = document.getElementById('user-cart-details');
+  const total = userCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const count = userCart.reduce((sum, item) => sum + item.quantity, 0);
+  document.getElementById('user-cart-count').textContent = count;
+  document.getElementById('user-cart-total').textContent = formatMoney(total);
+  document.getElementById('user-cart-dialog-total').textContent = formatMoney(total);
+  document.getElementById('user-cart-preview-empty').classList.toggle('hidden', userCart.length > 0);
+  document.getElementById('user-cart-details-empty').classList.toggle('hidden', userCart.length > 0);
+  document.getElementById('user-place-order').disabled = userCart.length === 0;
+  document.getElementById('user-checkout-email').value = currentUser?.email || '';
+  preview.replaceChildren(...userCart.map(item => createUserCartLine(item, false)));
+  details.replaceChildren(...userCart.map(item => createUserCartLine(item, true)));
+}
+
+function openUserCart() {
+  document.getElementById('user-checkout-message').classList.add('hidden');
+  renderUserCart();
+  document.getElementById('user-cart-dialog').showModal();
+}
+
+document.getElementById('user-cart-open').addEventListener('click', openUserCart);
+document.getElementById('user-cart-review').addEventListener('click', openUserCart);
+document.getElementById('user-cart-close').addEventListener('click', () => {
+  document.getElementById('user-cart-dialog').close();
+});
+document.getElementById('refresh-user-products').addEventListener('click', loadUserProducts);
+
+document.getElementById('user-place-order').addEventListener('click', async (event) => {
+  if (userCart.length === 0) return;
+  const button = event.currentTarget;
+  const message = document.getElementById('user-checkout-message');
+  button.disabled = true;
+  button.textContent = 'Procesando pedido...';
+  message.classList.add('hidden');
+
+  try {
+    const response = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({
+        items: userCart.map(item => ({ productId: item.productId, quantity: item.quantity }))
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'No se pudo registrar el pedido.');
+
+    userCart = [];
+    renderUserCart();
+    await loadUserProducts();
+    message.textContent = result.emailSent
+      ? result.previewUrl
+        ? `Pedido #${result.orderId} confirmado. El recibo para ${currentUser.email} quedó listo como evidencia de demostración.`
+        : `Pedido #${result.orderId} confirmado. Enviamos el detalle a ${currentUser.email}.`
+      : `El pedido #${result.orderId} quedó registrado, pero no se pudo enviar el correo. Contacta a soporte antes de volver a comprar.`;
+    message.className = result.emailSent ? 'mt-4 text-sm text-green-700' : 'mt-4 text-sm text-red-600';
+    if (result.previewUrl) {
+      const previewLink = document.createElement('a');
+      previewLink.href = result.previewUrl;
+      previewLink.target = '_blank';
+      previewLink.rel = 'noopener noreferrer';
+      previewLink.textContent = 'Abrir vista previa del correo';
+      previewLink.className = 'mt-2 inline-block font-bold underline';
+      message.append(document.createElement('br'), previewLink);
+    }
+  } catch (error) {
+    message.textContent = error.message || 'Error de conexión al confirmar el pedido.';
+    message.className = 'mt-4 text-sm text-red-600';
+  } finally {
+    button.textContent = 'Confirmar pedido y enviar recibo';
+    button.disabled = userCart.length === 0;
   }
 });
 
@@ -242,6 +497,212 @@ window.deleteProduct = async (id) => {
 // ==========================================
 // 4. PANEL ADMINISTRADOR
 // ==========================================
+const analyticsCharts = { revenue: null, statuses: null };
+
+function analyticsDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function setAnalyticsDatePreset(preset) {
+  const today = new Date();
+  const from = new Date(today);
+  if (preset === 'last7') from.setDate(today.getDate() - 6);
+  if (preset === 'last30') from.setDate(today.getDate() - 29);
+  if (preset === 'month') from.setDate(1);
+
+  document.getElementById('analytics-from').value = analyticsDateInputValue(from);
+  document.getElementById('analytics-to').value = analyticsDateInputValue(today);
+}
+
+function initializeAnalyticsFilters() {
+  const preset = document.getElementById('analytics-range-preset');
+  if (preset.dataset.initialized) return;
+  setAnalyticsDatePreset(preset.value || 'last30');
+  preset.dataset.initialized = 'true';
+}
+
+function formatAnalyticsMoney(amount) {
+  return `$${Number(amount || 0).toLocaleString('es-CL', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
+function addAnalyticsEmptyRow(body, columnCount, text) {
+  const row = document.createElement('tr');
+  const cell = document.createElement('td');
+  cell.colSpan = columnCount;
+  cell.className = 'p-4 text-center text-sm text-gray-500';
+  cell.textContent = text;
+  row.appendChild(cell);
+  body.appendChild(row);
+}
+
+function renderAnalyticsTable(body, rows, columns, emptyText) {
+  body.replaceChildren();
+  if (rows.length === 0) {
+    addAnalyticsEmptyRow(body, columns.length, emptyText);
+    return;
+  }
+
+  rows.forEach((values, rowIndex) => {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50';
+    values.forEach((value, columnIndex) => {
+      const cell = document.createElement('td');
+      cell.className = `p-3 ${columnIndex === 0 ? 'font-semibold text-gray-900' : 'text-gray-700'}`;
+      cell.textContent = columnIndex === 0 && columns[columnIndex] === 'rank'
+        ? String(rowIndex + 1)
+        : String(value);
+      row.appendChild(cell);
+    });
+    body.appendChild(row);
+  });
+}
+
+function renderAnalyticsDashboard(data) {
+  document.getElementById('analytics-total-revenue').textContent = formatAnalyticsMoney(data.summary.totalRevenue);
+  document.getElementById('analytics-order-count').textContent = data.summary.orderCount.toLocaleString('es-CL');
+  document.getElementById('analytics-average-ticket').textContent = formatAnalyticsMoney(data.summary.averageTicket);
+  document.getElementById('analytics-average-user').textContent = formatAnalyticsMoney(data.summary.averagePerUser);
+  document.getElementById('analytics-customer-count').textContent = `${data.summary.customerCount.toLocaleString('es-CL')} compradores`;
+
+  const revenueCanvas = document.getElementById('analytics-revenue-chart');
+  analyticsCharts.revenue?.destroy();
+  analyticsCharts.revenue = new Chart(revenueCanvas, {
+    type: 'line',
+    data: {
+      labels: data.revenueTrend.map(item => item.period),
+      datasets: [{
+        label: 'Ingresos',
+        data: data.revenueTrend.map(item => item.revenue),
+        borderColor: '#e87518',
+        backgroundColor: 'rgba(232, 117, 24, 0.14)',
+        pointBackgroundColor: '#111827',
+        pointRadius: 3,
+        fill: true,
+        tension: 0.25
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: context => formatAnalyticsMoney(context.parsed.y) } }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: value => formatAnalyticsMoney(value) },
+          grid: { color: '#e5e7eb' }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  const statusColors = {
+    Pendiente: '#eab308',
+    Pagado: '#22c55e',
+    Enviado: '#3b82f6',
+    Cancelado: '#ef4444'
+  };
+  const statusCanvas = document.getElementById('analytics-status-chart');
+  analyticsCharts.statuses?.destroy();
+  analyticsCharts.statuses = new Chart(statusCanvas, {
+    type: 'pie',
+    data: {
+      labels: data.orderStatuses.map(item => item.status),
+      datasets: [{
+        data: data.orderStatuses.map(item => item.count),
+        backgroundColor: data.orderStatuses.map(item => statusColors[item.status]),
+        borderColor: '#ffffff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } },
+        tooltip: {
+          callbacks: {
+            label: context => {
+              const status = data.orderStatuses[context.dataIndex];
+              return `${status.status}: ${status.count} (${status.percentage.toFixed(1)}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  renderAnalyticsTable(
+    document.getElementById('analytics-products-body'),
+    data.topProducts.map(product => [
+      'rank', product.productName, product.unitsSold.toLocaleString('es-CL'), formatAnalyticsMoney(product.revenue)
+    ]),
+    ['rank', 'product', 'units', 'revenue'],
+    'No hay ventas de productos en este período.'
+  );
+  renderAnalyticsTable(
+    document.getElementById('analytics-customers-body'),
+    data.customers.map(customer => [
+      customer.name,
+      customer.orderCount.toLocaleString('es-CL'),
+      formatAnalyticsMoney(customer.totalSpent),
+      formatAnalyticsMoney(customer.averageOrderValue)
+    ]),
+    ['user', 'orders', 'spent', 'average'],
+    'No hay compras de clientes en este período.'
+  );
+}
+
+async function loadAdminAnalytics() {
+  initializeAnalyticsFilters();
+  const message = document.getElementById('analytics-message');
+  const from = document.getElementById('analytics-from').value;
+  const to = document.getElementById('analytics-to').value;
+  if (!from || !to || from > to) {
+    message.textContent = 'Selecciona un rango de fechas válido.';
+    message.classList.remove('hidden');
+    return;
+  }
+
+  message.classList.add('hidden');
+  const query = new URLSearchParams({
+    from,
+    to,
+    granularity: document.getElementById('analytics-granularity').value,
+    topLimit: document.getElementById('analytics-top-limit').value
+  });
+
+  try {
+    const response = await fetch(`${API_URL}/analytics/dashboard?${query}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'No se pudieron cargar las métricas.');
+    renderAnalyticsDashboard(result);
+  } catch (error) {
+    message.textContent = error.message || 'Error de conexión al cargar las métricas.';
+    message.classList.remove('hidden');
+  }
+}
+
+document.getElementById('analytics-range-preset').addEventListener('change', event => {
+  if (event.target.value !== 'custom') setAnalyticsDatePreset(event.target.value);
+});
+document.getElementById('analytics-filter-form').addEventListener('submit', event => {
+  event.preventDefault();
+  loadAdminAnalytics();
+});
+
 window.cargarUsuariosAdmin = async () => {
   try {
     const response = await fetch(`${API_URL}/users`, {

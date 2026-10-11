@@ -31,12 +31,13 @@ class UserUseCase {
     };
   }
 
-  async register(name, email, password) {
+  async register(name, email, password, isCollaborator = false) {
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) throw new Error('El correo ya está registrado');
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User(null, name, email, hashedPassword, 'user', 'pendiente');
+    const status = isCollaborator === true ? 'pendiente' : 'aprobado';
+    const newUser = new User(null, name, email, hashedPassword, 'user', status);
     return await this.userRepository.save(newUser);
   }
 

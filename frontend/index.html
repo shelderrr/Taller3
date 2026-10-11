@@ -40,7 +40,7 @@
         </form>
         <div class="mt-8 flex justify-between items-center text-sm font-medium">
           <span class="text-gray-400">¿Nuevo en CondeShop?</span>
-          <button id="show-register-btn" class="text-orange-500 font-bold hover:underline">Crear cuenta de vendedor</button>
+          <button id="show-register-btn" class="text-orange-500 font-bold hover:underline">Crear cuenta de usuario</button>
         </div>
       </div>
     </div>
@@ -54,12 +54,17 @@
     </div>
     <div class="w-full lg:w-1/2 flex items-center justify-center bg-white p-8">
       <div class="w-full max-w-md">
-        <h2 class="text-3xl font-black text-black uppercase tracking-tight mb-8">Solicitud de Registro</h2>
+        <h2 class="text-3xl font-black text-black uppercase tracking-tight mb-2">Crear cuenta</h2>
+        <p class="text-gray-500 mb-8">Regístrate para consultar los productos vendidos.</p>
         <form id="public-register-form" class="space-y-5">
           <input type="text" id="reg-name" placeholder="Nombre Completo" required class="w-full p-4 bg-gray-50 border-b-2 border-gray-200 focus:border-orange-500 outline-none">
           <input type="email" id="reg-email" placeholder="Correo Electrónico" required class="w-full p-4 bg-gray-50 border-b-2 border-gray-200 focus:border-orange-500 outline-none">
           <input type="password" id="reg-password" placeholder="Contraseña" required class="w-full p-4 bg-gray-50 border-b-2 border-gray-200 focus:border-orange-500 outline-none">
-          <button type="submit" class="w-full bg-orange-500 hover:bg-black text-black hover:text-white font-black text-lg py-4 rounded-sm uppercase tracking-widest transition-all mt-6">Enviar Solicitud</button>
+          <label for="reg-collaborator" class="flex items-start gap-3 text-sm text-gray-700">
+            <input id="reg-collaborator" type="checkbox" class="mt-1 accent-orange-500">
+            <span>Quiero crear una cuenta como colaborador y esperar la aprobación de un administrador.</span>
+          </label>
+          <button type="submit" class="w-full bg-orange-500 hover:bg-black text-black hover:text-white font-black text-lg py-4 rounded-sm uppercase tracking-widest transition-all mt-6">Crear cuenta</button>
         </form>
         <button id="back-to-login-btn" class="mt-6 text-sm text-gray-400 font-bold hover:text-black transition-colors">← Volver al inicio</button>
       </div>
@@ -88,7 +93,100 @@
   </header>
 
   <!-- EL CONTENIDO QUE YA ARREGLAMOS -->
-  <div class="flex-1 overflow-auto p-6 flex flex-col lg:flex-row gap-6">
+  <div class="flex-1 overflow-auto p-6 space-y-6">
+    <section class="bg-white p-5 shadow-sm border-t-4 border-orange-500">
+      <div class="flex flex-wrap items-end justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-xl font-black uppercase text-black">Dashboard de ventas</h2>
+          <p class="mt-1 text-sm text-gray-500">Ingresos y pedidos no cancelados; distribución de estados para todos los pedidos.</p>
+        </div>
+        <form id="analytics-filter-form" class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:w-auto xl:grid-cols-6 xl:items-end">
+          <label class="text-xs font-bold uppercase text-gray-500">Período
+            <select id="analytics-range-preset" class="mt-1 block w-full border border-gray-300 bg-white px-2 py-2 text-sm normal-case text-gray-900">
+              <option value="last7">Últimos 7 días</option>
+              <option value="last30" selected>Últimos 30 días</option>
+              <option value="month">Este mes</option>
+              <option value="custom">Rango personalizado</option>
+            </select>
+          </label>
+          <label class="text-xs font-bold uppercase text-gray-500">Desde
+            <input id="analytics-from" type="date" required class="mt-1 block w-full border border-gray-300 px-2 py-2 text-sm normal-case text-gray-900">
+          </label>
+          <label class="text-xs font-bold uppercase text-gray-500">Hasta
+            <input id="analytics-to" type="date" required class="mt-1 block w-full border border-gray-300 px-2 py-2 text-sm normal-case text-gray-900">
+          </label>
+          <label class="text-xs font-bold uppercase text-gray-500">Agrupar
+            <select id="analytics-granularity" class="mt-1 block w-full border border-gray-300 bg-white px-2 py-2 text-sm normal-case text-gray-900">
+              <option value="day">Diario</option>
+              <option value="week">Semanal</option>
+              <option value="month">Mensual</option>
+            </select>
+          </label>
+          <label class="text-xs font-bold uppercase text-gray-500">Ranking
+            <select id="analytics-top-limit" class="mt-1 block w-full border border-gray-300 bg-white px-2 py-2 text-sm normal-case text-gray-900">
+              <option value="5">Top 5</option>
+              <option value="10">Top 10</option>
+            </select>
+          </label>
+          <button type="submit" class="col-span-2 bg-black px-4 py-2 text-sm font-bold uppercase text-orange-500 hover:bg-orange-500 hover:text-black sm:col-span-1">Aplicar filtros</button>
+        </form>
+      </div>
+      <p id="analytics-message" class="hidden mb-4 text-sm text-red-600" aria-live="polite"></p>
+
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="border-l-4 border-orange-500 bg-gray-50 p-4">
+          <p class="text-xs font-bold uppercase text-gray-500">Ingresos totales</p>
+          <p id="analytics-total-revenue" class="mt-2 text-2xl font-black text-gray-900">$0.00</p>
+        </article>
+        <article class="border-l-4 border-black bg-gray-50 p-4">
+          <p class="text-xs font-bold uppercase text-gray-500">Pedidos no cancelados</p>
+          <p id="analytics-order-count" class="mt-2 text-2xl font-black text-gray-900">0</p>
+        </article>
+        <article class="border-l-4 border-green-600 bg-gray-50 p-4">
+          <p class="text-xs font-bold uppercase text-gray-500">Ticket promedio</p>
+          <p id="analytics-average-ticket" class="mt-2 text-2xl font-black text-gray-900">$0.00</p>
+        </article>
+        <article class="border-l-4 border-blue-600 bg-gray-50 p-4">
+          <p class="text-xs font-bold uppercase text-gray-500">Promedio por usuario</p>
+          <p id="analytics-average-user" class="mt-2 text-2xl font-black text-gray-900">$0.00</p>
+          <p id="analytics-customer-count" class="mt-1 text-xs text-gray-500">0 compradores</p>
+        </article>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
+        <section class="min-w-0 border border-gray-200 p-4">
+          <h3 class="mb-3 text-sm font-black uppercase text-gray-800">Tendencia de ingresos</h3>
+          <div class="relative h-72"><canvas id="analytics-revenue-chart" aria-label="Ingresos por período"></canvas></div>
+        </section>
+        <section class="min-w-0 border border-gray-200 p-4">
+          <h3 class="mb-3 text-sm font-black uppercase text-gray-800">Estados de pedidos</h3>
+          <div class="relative mx-auto h-72 max-w-sm"><canvas id="analytics-status-chart" aria-label="Distribución de estados de pedidos"></canvas></div>
+        </section>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <section class="min-w-0 border border-gray-200 p-4">
+          <h3 class="mb-3 text-sm font-black uppercase text-gray-800">Productos con mayor rotación</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-3">#</th><th class="p-3">Producto</th><th class="p-3">Unidades</th><th class="p-3">Ingresos</th></tr></thead>
+              <tbody id="analytics-products-body" class="divide-y divide-gray-100"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="min-w-0 border border-gray-200 p-4">
+          <h3 class="mb-3 text-sm font-black uppercase text-gray-800">Gasto promedio por usuario</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-3">Usuario</th><th class="p-3">Pedidos</th><th class="p-3">Gasto total</th><th class="p-3">Promedio/pedido</th></tr></thead>
+              <tbody id="analytics-customers-body" class="divide-y divide-gray-100"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div class="flex flex-col lg:flex-row gap-6">
     
     <!-- RECUADRO DE USUARIOS -->
     <div class="w-full lg:w-1/3 bg-white p-6 shadow-sm rounded border-t-4 border-black h-fit">
@@ -109,8 +207,63 @@
       </div>
     </div>
 
+    </div>
   </div> 
 </div>
+
+  <div id="user-section" class="h-screen flex flex-col hidden bg-gray-100">
+    <header class="bg-black text-white p-4 flex justify-between items-center border-b-4 border-orange-500 shrink-0">
+      <h1 class="text-2xl font-black uppercase tracking-widest text-orange-500">CondeShop <span class="text-white text-sm">/ Catálogo</span></h1>
+      <div class="flex items-center gap-3">
+        <button id="user-cart-open" type="button" class="bg-orange-500 text-black px-4 py-2 text-sm font-bold uppercase">Carrito <span id="user-cart-count">0</span></button>
+        <button class="logout-btn bg-white/10 hover:bg-orange-500 hover:text-black text-white px-4 py-2 rounded text-sm font-bold uppercase transition-colors">Salir</button>
+      </div>
+    </header>
+    <main class="flex-1 overflow-auto p-6">
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-start">
+        <section class="bg-white p-6 shadow-sm border-t-4 border-orange-500">
+          <div class="flex flex-wrap justify-between items-end gap-3 mb-5">
+            <div>
+              <h2 class="text-xl font-black uppercase text-black">Productos disponibles</h2>
+              <p class="text-sm text-gray-500 mt-1">Productos aprobados por los vendedores.</p>
+            </div>
+            <button id="refresh-user-products" type="button" class="border border-gray-300 px-3 py-2 text-sm font-bold uppercase hover:border-orange-500">Actualizar</button>
+          </div>
+          <p id="user-products-message" class="hidden py-6 text-center text-gray-500" aria-live="polite"></p>
+          <div id="user-products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+        <aside class="bg-white p-5 shadow-sm border-t-4 border-black xl:sticky xl:top-6">
+          <h2 class="text-lg font-black uppercase text-black">Mi carrito</h2>
+          <ul id="user-cart-preview" class="my-4 divide-y divide-gray-100"></ul>
+          <p id="user-cart-preview-empty" class="py-4 text-sm text-gray-500">Aún no agregas productos.</p>
+          <div class="flex justify-between border-t pt-4 font-bold text-black">
+            <span>Total</span><span id="user-cart-total">$0.00</span>
+          </div>
+          <button id="user-cart-review" type="button" class="mt-4 w-full bg-black text-orange-500 px-4 py-3 font-black uppercase hover:bg-orange-500 hover:text-black">Revisar pedido</button>
+        </aside>
+      </div>
+    </main>
+    <dialog id="user-cart-dialog" class="m-auto w-[min(92vw,42rem)] rounded-lg p-0 shadow-xl backdrop:bg-black/50">
+      <div class="p-6 sm:p-8">
+        <div class="flex justify-between items-start gap-4 border-b pb-4">
+          <div>
+            <h2 class="text-xl font-black uppercase text-black">Detalle de compra</h2>
+            <p class="text-sm text-gray-500 mt-1">Revisa los productos y el total antes de confirmar.</p>
+          </div>
+          <button id="user-cart-close" type="button" class="border border-gray-300 px-3 py-2 text-sm font-bold uppercase">Cerrar</button>
+        </div>
+        <div id="user-cart-details" class="max-h-72 overflow-auto"></div>
+        <p id="user-cart-details-empty" class="hidden py-5 text-sm text-gray-500">El carrito está vacío.</p>
+        <div class="flex justify-between border-t py-4 font-black text-lg text-black">
+          <span>Total del pedido</span><span id="user-cart-dialog-total">$0.00</span>
+        </div>
+        <label for="user-checkout-email" class="block text-xs font-bold uppercase text-gray-500 mb-2">Recibo al correo registrado</label>
+        <input id="user-checkout-email" type="email" readonly class="w-full border border-gray-300 bg-gray-50 px-3 py-3 text-gray-700">
+        <p id="user-checkout-message" class="hidden mt-4 text-sm" aria-live="polite"></p>
+        <button id="user-place-order" type="button" class="mt-5 w-full bg-orange-500 px-4 py-3 font-black uppercase text-black hover:bg-black hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-50">Confirmar pedido y enviar recibo</button>
+      </div>
+    </dialog>
+  </div>
 
   <!-- 4. VENDEDOR -->
   <div id="vendedor-section" class="h-screen flex flex-col hidden bg-gray-100">
