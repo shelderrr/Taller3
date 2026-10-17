@@ -3,6 +3,8 @@ import Chart from 'chart.js/auto';
 const API_URL = 'http://localhost:3000/api';
 let authToken = localStorage.getItem('token');
 let currentUser = JSON.parse(localStorage.getItem('user'));
+let knownAdminOrderIds = null;
+let adminOrderPoller = null;
 
 // ==========================================
 // 1. NAVEGACIÓN Y RUTEO
@@ -48,6 +50,10 @@ function routeUser(role, status) {
       cargarProductosAdmin(); 
       cargarUsuariosAdmin();
       loadAdminAnalytics();
+      knownAdminOrderIds = null;
+      loadOrders();
+      clearInterval(adminOrderPoller);
+      adminOrderPoller = setInterval(loadOrders, 15000);
       break;
     case 'vendedor':
       showSection('vendedor-section');
@@ -1001,6 +1007,35 @@ window.submitOrder = async () => {
 };
 
 // CARGA EL HISTORIAL EN LA TABLA
+function showAdminOrderNotification(order) {
+  const notification = document.getElementById('admin-order-notification');
+  if (!notification) return;
+  notification.textContent = `Nueva compra: ${order.buyer_name || 'Un usuario'} realizó un pedido por ${formatMoney(order.total_price)}. Pago pendiente.`;
+  notification.classList.remove('hidden');
+}
+
+async function updateOrderPaymentStatus(orderId, paymentStatus) {
+  const message = document.getElementById('admin-orders-message');
+  message.classList.add('hidden');
+  try {
+    const response = await fetch(`${API_URL}/orders/${orderId}/payment-status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ paymentStatus })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'No se pudo actualizar el pago.');
+    await loadOrders();
+  } catch (error) {
+    message.textContent = error.message || 'No se pudo actualizar el estado del pago.';
+    message.classList.remove('hidden');
+    await loadOrders();
+  }
+}
+
 window.loadOrders = async () => {
   try {
     const response = await fetch(`${API_URL}/orders`, {
@@ -1008,38 +1043,86 @@ window.loadOrders = async () => {
     });
     const orders = await response.json();
     const ordersTable = document.getElementById('orders-table-body');
+    const adminOrdersTable = document.getElementById('admin-orders-table-body');
+    const isAdmin = currentUser?.role === 'admin';
+
+    if (isAdmin && Array.isArray(orders)) {
+      const currentOrderIds = new Set(orders.map(order => Number(order.id)));
+      if (knownAdminOrderIds) {
+        const newOrder = orders.find(order => !knownAdminOrderIds.has(Number(order.id)));
+        if (newOrder) showAdminOrderNotification(newOrder);
+      }
+      knownAdminOrderIds = currentOrderIds;
+    }
     
-    if (!ordersTable) return;
-    ordersTable.innerHTML = '';
+    if (!ordersTable && !adminOrdersTable) return;
+    if (ordersTable) ordersTable.innerHTML = '';
+    if (adminOrdersTable) adminOrdersTable.replaceChildren();
     
     if (!orders || orders.length === 0) {
-      ordersTable.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay compras registradas.</td></tr>';
+      if (ordersTable) ordersTable.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay compras registradas.</td></tr>';
+      if (adminOrdersTable) adminOrdersTable.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay compras registradas.</td></tr>';
       return;
     }
 
     orders.forEach(o => {
-      // Usamos las columnas exactas que vimos en tu consola
       const fecha = o.created_at || new Date().toISOString();
       const estado = o.status || 'COMPLETADO';
       const montoTotal = o.total_price || 0;
       const distribuidor = o.distribuidor_name || currentUser.name;
 
-      ordersTable.innerHTML += `
-        <tr class="border-b hover:bg-slate-50">
-          <td class="p-3 font-bold text-gray-700">#${o.id}</td>
-          <td class="p-3">${distribuidor}</td>
-          <td class="p-3 text-green-600 font-bold">$${parseFloat(montoTotal).toFixed(2)}</td>
-          <td class="p-3 text-xs text-gray-500">${new Date(fecha).toLocaleDateString()}</td>
-          <td class="p-3">
-             <span class="px-2 py-1 text-[10px] rounded-full bg-blue-100 text-blue-800 font-bold uppercase">${estado}</span>
-          </td>
-        </tr>
-      `;
+      if (ordersTable) {
+        const row = document.createElement('tr');
+        row.className = 'border-b hover:bg-slate-50';
+        [
+          `#${o.id}`,
+          distribuidor,
+          formatMoney(montoTotal),
+          new Date(fecha).toLocaleDateString(),
+          estado
+        ].forEach((value, index) => {
+          const cell = document.createElement('td');
+          cell.className = `p-3 ${index === 0 ? 'font-bold text-gray-700' : ''} ${index === 2 ? 'font-bold text-green-600' : ''} ${index === 3 ? 'text-xs text-gray-500' : ''}`;
+          cell.textContent = value;
+          row.append(cell);
+        });
+        ordersTable.append(row);
+      }
+
+      if (adminOrdersTable) {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-slate-50';
+        const values = [`#${o.id}`, o.buyer_name || 'Usuario', formatMoney(montoTotal), new Date(fecha).toLocaleString()];
+        values.forEach((value, index) => {
+          const cell = document.createElement('td');
+          cell.className = `p-3 ${index === 0 ? 'font-bold text-gray-700' : ''} ${index === 2 ? 'font-bold text-green-700' : ''} ${index === 3 ? 'text-xs text-gray-500' : ''}`;
+          cell.textContent = value;
+          row.append(cell);
+        });
+        const paymentCell = document.createElement('td');
+        paymentCell.className = 'p-3';
+        const paymentSelect = document.createElement('select');
+        paymentSelect.className = 'border border-gray-300 bg-white px-2 py-1 text-xs font-bold';
+        paymentSelect.setAttribute('aria-label', `Estado de pago del pedido ${o.id}`);
+        [['pendiente', 'Pago pendiente'], ['completado', 'Pago completado']].forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          paymentSelect.append(option);
+        });
+        paymentSelect.value = o.payment_status || 'pendiente';
+        paymentSelect.addEventListener('change', () => updateOrderPaymentStatus(o.id, paymentSelect.value));
+        paymentCell.append(paymentSelect);
+        row.append(paymentCell);
+        adminOrdersTable.append(row);
+      }
     });
   } catch (error) {
     console.error('Error cargando historial de compras:', error);
   }
 };
+
+document.getElementById('admin-orders-refresh')?.addEventListener('click', loadOrders);
 
 // ==========================================
 // INTERACCIONES SECUNDARIAS

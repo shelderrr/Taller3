@@ -35,6 +35,15 @@ class OrderController {
     }
   }
 
+  async updatePaymentStatus(req, res) {
+    try {
+      const order = await this.orderUseCase.updatePaymentStatus(req.params.id, req.body.paymentStatus);
+      res.json(order);
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  }
+
   async getSoldProducts(req, res) {
     try {
       const products = await this.orderUseCase.getSoldProducts();

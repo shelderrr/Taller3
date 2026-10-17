@@ -65,7 +65,7 @@ class MysqlOrderRepository {
       }
 
       const [orderResult] = await connection.query(
-        'INSERT INTO orders (user_id, total_price) VALUES (?, ?)',
+        "INSERT INTO orders (user_id, total_price, payment_status) VALUES (?, ?, 'pendiente')",
         [userId, totalPrice]
       );
       const orderId = orderResult.insertId;
@@ -100,12 +100,33 @@ class MysqlOrderRepository {
 
   async findAll() {
     const [rows] = await pool.query(`
-      SELECT o.id, o.total_price, o.status, o.created_at, u.name as distribuidor_name 
+      SELECT o.id, o.total_price, o.status, o.payment_status, o.created_at,
+        u.name AS buyer_name, u.name AS distribuidor_name
       FROM orders o 
       JOIN users u ON o.user_id = u.id 
       ORDER BY o.created_at DESC
     `);
     return rows;
+  }
+
+  async updatePaymentStatus(orderId, paymentStatus) {
+    const [result] = await pool.query(
+      'UPDATE orders SET payment_status = ? WHERE id = ?',
+      [paymentStatus, orderId]
+    );
+    if (result.affectedRows === 0) {
+      const [orders] = await pool.query('SELECT id FROM orders WHERE id = ? LIMIT 1', [orderId]);
+      if (orders.length === 0) {
+        const error = new Error('No se encontró el pedido.');
+        error.statusCode = 404;
+        throw error;
+      }
+    }
+    const [orders] = await pool.query(
+      'SELECT id, payment_status FROM orders WHERE id = ? LIMIT 1',
+      [orderId]
+    );
+    return orders[0];
   }
 
   async findSoldProducts() {

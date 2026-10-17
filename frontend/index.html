@@ -186,6 +186,24 @@
       </div>
     </section>
 
+    <section class="bg-white p-5 shadow-sm border-t-4 border-black">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-black uppercase text-black">Compras recientes</h2>
+          <p class="mt-1 text-sm text-gray-500">Comprador, total y estado del pago.</p>
+        </div>
+        <button id="admin-orders-refresh" type="button" class="border border-gray-300 px-3 py-2 text-sm font-bold uppercase hover:border-orange-500">Actualizar</button>
+      </div>
+      <p id="admin-order-notification" class="mb-4 hidden border-l-4 border-orange-500 bg-orange-50 p-3 text-sm font-bold text-gray-900" role="status" aria-live="polite"></p>
+      <p id="admin-orders-message" class="hidden mb-3 text-sm text-red-600" role="alert"></p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr><th class="p-3">Pedido</th><th class="p-3">Comprador</th><th class="p-3">Total</th><th class="p-3">Fecha</th><th class="p-3">Pago</th></tr></thead>
+          <tbody id="admin-orders-table-body" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+    </section>
+
     <div class="flex flex-col lg:flex-row gap-6">
     
     <!-- RECUADRO DE USUARIOS -->

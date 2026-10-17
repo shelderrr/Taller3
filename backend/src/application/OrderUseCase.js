@@ -51,6 +51,21 @@ class OrderUseCase {
     return await this.orderRepository.findAll();
   }
 
+  async updatePaymentStatus(orderId, paymentStatus) {
+    const normalizedOrderId = Number(orderId);
+    if (!Number.isSafeInteger(normalizedOrderId) || normalizedOrderId <= 0) {
+      const error = new Error('Pedido inválido.');
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!['pendiente', 'completado'].includes(paymentStatus)) {
+      const error = new Error('El estado de pago debe ser pendiente o completado.');
+      error.statusCode = 400;
+      throw error;
+    }
+    return await this.orderRepository.updatePaymentStatus(normalizedOrderId, paymentStatus);
+  }
+
   async getSoldProducts() {
     return await this.orderRepository.findSoldProducts();
   }
